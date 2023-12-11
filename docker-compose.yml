@@ -4,11 +4,15 @@ services:
   talker:
     image: osrf/ros:iron-desktop
     command: ros2 run demo_nodes_cpp talker
+    labels:
+      logging: "promtail"
   listener:
     image: osrf/ros:iron-desktop
     command: ros2 run demo_nodes_cpp listener
     depends_on:
       - talker
+    labels:
+      logging: "promtail"
   rviz:
     build:
       context: .
@@ -21,11 +25,35 @@ services:
       - /run/user/1000/wayland-0:/run/user/1000/wayland-0
       - /run/user/1000/bus:/run/user/1000/bus
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./cache/build:/home/ros/ws/build
-      - ./cache/install:/home/ros/ws/install
-      - ./cache/log:/home/ros/ws/log
+      - ./volumes/ros/build:/home/ros/ws/build
+      - ./volumes/ros/install:/home/ros/ws/install
+      #- ./volume/ros:/home/ros/ws/log
       - ./src:/home/ros/ws/src
     devices:
       - /dev/bus/usb:/dev/bus/usb
       - /dev/dri/renderD128:/dev/dri/renderD128
     tty: true
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./volumes/loki:/loki
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - ./configs/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./volumes/grafana:/var/lib/grafana
+      - ./configs/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
