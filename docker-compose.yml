@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  talker:
+    image: osrf/ros:iron-desktop
+    command: ros2 run demo_nodes_cpp talker
+  listener:
+    image: osrf/ros:iron-desktop
+    command: ros2 run demo_nodes_cpp listener
+    depends_on:
+      - talker
+  rviz:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - ROS_DISTRO=iron
+    working_dir: /home/ros/ws
+    privileged: true
+    volumes:
+      - /run/user/1000/wayland-0:/run/user/1000/wayland-0
+      - /run/user/1000/bus:/run/user/1000/bus
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./cache/build:/home/ros/ws/build
+      - ./cache/install:/home/ros/ws/install
+      - ./cache/log:/home/ros/ws/log
+      - ./src:/home/ros/ws/src
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    tty: true
